@@ -1,0 +1,74 @@
+# Nginx reverse proxy for Next.js (PM2 on 127.0.0.1:3000).
+#
+# 1. Replace YOUR_DOMAIN.com (and www) with your real domain.
+# 2. Copy to e.g. /etc/nginx/sites-available/studio-rent then symlink:
+#      sudo ln -s /etc/nginx/sites-available/studio-rent /etc/nginx/sites-enabled/
+# 3. Obtain certificates (installs certs and can merge server blocks):
+#      sudo apt install certbot python3-certbot-nginx
+#      sudo certbot --nginx -d YOUR_DOMAIN.com -d www.YOUR_DOMAIN.com
+# 4. Test and reload:
+#      sudo nginx -t && sudo systemctl reload nginx
+#
+# If Certbot created its own server block, ensure `location /` still proxies
+# to http://127.0.0.1:3000 with the headers below.
+
+upstream studio_rent_next {
+    server 127.0.0.1:3000;
+    keepalive 64;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name YOUR_DOMAIN.com www.YOUR_DOMAIN.com;
+
+    # After Certbot, HTTP typically redirects to HTTPS (Certbot adds this).
+    # Uncomment if you handle HTTPS in a separate file only:
+    # return 301 https://$host$request_uri;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        proxy_pass http://studio_rent_next;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 60s;
+    }
+}
+
+# HTTPS — paths match default Let's Encrypt layout after `certbot --nginx`.
+# Certbot may inject ssl_* lines for you; this block is a reference.
+
+# server {
+#     listen 443 ssl http2;
+#     listen [::]:443 ssl http2;
+#     server_name YOUR_DOMAIN.com www.YOUR_DOMAIN.com;
+#
+#     ssl_certificate /etc/letsencrypt/live/YOUR_DOMAIN.com/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/YOUR_DOMAIN.com/privkey.pem;
+#     include /etc/letsencrypt/options-ssl-nginx.conf;
+#     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+#
+#     location / {
+#         proxy_pass http://studio_rent_next;
+#         proxy_http_version 1.1;
+#         proxy_set_header Upgrade $http_upgrade;
+#         proxy_set_header Connection "upgrade";
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_set_header X-Forwarded-Host $host;
+#         proxy_cache_bypass $http_upgrade;
+#         proxy_read_timeout 60s;
+#     }
+# }
