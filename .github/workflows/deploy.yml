@@ -1,43 +1,50 @@
-# Deploy to Hostinger VPS over SSH: pull, install, build, PM2 reload.
-# Required GitHub Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_APP_PATH
-# Optional: VPS_PORT (default 22), VPS_SSH_PASSPHRASE (if key is encrypted)
+# Automated deploy to Hostinger VPS (SSH + git pull + build + PM2).
+#
+# Required GitHub Actions secrets (Settings → Secrets and variables → Actions):
+#   HOST          — VPS hostname or IP
+#   USERNAME      — SSH user (e.g. ubuntu, deploy, root)
+#   SSH_KEY       — Private key PEM (full file, incl. BEGIN/END lines)
+#   APP_DIRECTORY — Absolute path on the VPS to this repo (directory that
+#                   contains package.json and ecosystem.config.js), e.g.:
+#                   /var/www/studio-booking
+#
+# Optional: under `with:` add  passphrase: ${{ secrets.SSH_PASSPHRASE }}  if the key is encrypted
+# Optional: under `with:` add  port: 2222  if SSH is not on port 22
 
-name: Deploy to VPS
+name: Deploy studio-booking
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 concurrency:
-  group: deploy-production
+  group: deploy-studio-booking
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: SSH — pull, build, PM2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: SSH — pull, install, build, PM2
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          # Omit port to use 22. For a custom SSH port, add: port: 2222
-          passphrase: ${{ secrets.VPS_SSH_PASSPHRASE }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
           script_stop: true
           script: |
             set -euo pipefail
-            cd "${{ secrets.VPS_APP_PATH }}"
-            git fetch origin main
-            git checkout main
-            git reset --hard origin/main
-            npm ci
+            cd "${{ secrets.APP_DIRECTORY }}"
+            git pull origin main
+            npm install --frozen-lockfile
             npm run build
-            if pm2 describe studio-rent >/dev/null 2>&1; then
-              pm2 reload ecosystem.config.js --only studio-rent --env production --update-env
+            if pm2 describe studio-booking-app >/dev/null 2>&1; then
+              pm2 reload ecosystem.config.js --only studio-booking-app --env production --update-env
             else
-              pm2 start ecosystem.config.js --only studio-rent --env production
+              pm2 start ecosystem.config.js --only studio-booking-app --env production
             fi
             pm2 save
