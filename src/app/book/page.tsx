@@ -12,8 +12,6 @@ export const metadata: Metadata = {
 };
 
 export default function BookPage() {
-  const demoBlocked = ["2026-04-20", "2026-04-24", "2026-05-02"];
-
   return (
     <main className="min-h-dvh bg-gradient-to-b from-[#d4e4f0] via-[#e8f0f7] to-[#eef4f9] dark:from-[#08080c] dark:via-[#0f0f14] dark:to-[#15151d]">
       <header className="border-b border-white/50 bg-white/35 backdrop-blur-md dark:border-white/[0.08] dark:bg-zinc-950/55 dark:backdrop-blur-xl">
@@ -38,7 +36,7 @@ export default function BookPage() {
         <div className="relative mx-auto max-w-3xl space-y-8 text-center sm:space-y-10 lg:max-w-none">
           <header className="relative z-[5] space-y-3 sm:space-y-4">
             <p className="inline-flex items-center justify-center rounded-full border border-orange-200/80 bg-white/60 px-4 py-1.5 text-sm font-semibold text-[#ea580c] shadow-sm backdrop-blur-sm dark:border-orange-500/25 dark:bg-zinc-900/70 dark:text-orange-400 dark:shadow-[0_0_40px_-12px_rgba(249,115,22,0.25)]">
-              שלב 1 מתוך 4
+              שלב 1 מתוך 3
             </p>
             <h1 className="text-balance text-3xl font-semibold tracking-tight text-neutral-900 dark:text-zinc-50 sm:text-4xl">
               בחרו את מועד הצילום
@@ -50,7 +48,7 @@ export default function BookPage() {
           </header>
 
           <BookCalendarStage>
-            <BookBookingSection blockedDateStrings={demoBlocked} />
+            <BookBookingSection />
           </BookCalendarStage>
         </div>
       </section>

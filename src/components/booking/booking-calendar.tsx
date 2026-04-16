@@ -28,7 +28,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { RtlIcon } from "@/components/ui/rtl-icon";
-import { PAYMENT_LABELS } from "@/lib/booking-types";
+import {
+  dayHasAnyBusy,
+  type BusyInterval,
+} from "@/lib/availability-math";
 import type { StoredMeeting } from "@/lib/meetings-storage";
 import { cn } from "@/lib/utils";
 
@@ -39,8 +42,12 @@ type BookingCalendarProps = {
   onSelectDate: (date: Date) => void;
   onRequestDetails?: () => void;
   blockedDates?: Date[];
-  meetingDates?: Date[];
+  /** Google Calendar busy intervals (ISO) — drives dots on days with bookings. */
+  busyIntervals?: BusyInterval[];
+  /** Optional legacy rows from localStorage (display only). */
   dayMeetings?: StoredMeeting[];
+  /** Shown under the month title when /api/availability fails. */
+  availabilityError?: string | null;
 };
 
 export function BookingCalendar({
@@ -48,8 +55,9 @@ export function BookingCalendar({
   onSelectDate,
   onRequestDetails,
   blockedDates = [],
-  meetingDates = [],
+  busyIntervals = [],
   dayMeetings = [],
+  availabilityError = null,
 }: BookingCalendarProps) {
   const [currentMonth, setCurrentMonth] = React.useState<Date>(() =>
     selectedDate ? startOfMonth(selectedDate) : startOfMonth(new Date()),
@@ -70,8 +78,8 @@ export function BookingCalendar({
   const isBlocked = (d: Date) =>
     blockedDates.some((b) => isSameDay(b, d));
 
-  const hasMeeting = (d: Date) =>
-    meetingDates.some((m) => isSameDay(m, d));
+  const hasGoogleBusy = (d: Date) =>
+    dayHasAnyBusy(format(d, "yyyy-MM-dd"), busyIntervals);
 
   const goPrevMonth = () => setCurrentMonth((m) => subMonths(m, 1));
   const goNextMonth = () => setCurrentMonth((m) => addMonths(m, 1));
@@ -149,7 +157,10 @@ export function BookingCalendar({
           </Button>
         </div>
         <CardDescription className="text-center text-xs text-neutral-500 dark:text-zinc-400 sm:text-sm">
-          בחרו יום פנוי. לאחר מכן ייפתח חלון לבחירת שעות ותשלום.
+          בחרו יום פנוי. הזמינות מסונכרנת מיומן Google של הסטודיו.
+          {availabilityError ? (
+            <span className="mt-2 block text-destructive">{availabilityError}</span>
+          ) : null}
         </CardDescription>
       </CardHeader>
 
@@ -171,7 +182,7 @@ export function BookingCalendar({
             const blocked = isBlocked(day);
             const selected = selectedDate && isSameDay(day, selectedDate);
             const today = isToday(day);
-            const meeting = hasMeeting(day);
+            const meeting = hasGoogleBusy(day);
             const futureOrToday =
               !isBefore(day, new Date()) || isSameDay(day, new Date());
 
@@ -247,7 +258,7 @@ export function BookingCalendar({
               "dark:border-orange-500/20 dark:from-orange-500/15 dark:to-zinc-900/50 dark:text-zinc-400",
             )}
           >
-            לחצו על יום בלוח כדי לראות כאן את הפגישות השמורות במכשיר זה.
+            לחצו על יום בלוח. רשימת אירועים מפורטת נמצאת ביומן Google של הסטודיו.
           </p>
         ) : dayMeetings.length === 0 ? (
           <p
@@ -257,11 +268,11 @@ export function BookingCalendar({
               "dark:border-white/10 dark:bg-zinc-900/55 dark:text-zinc-400",
             )}
           >
-            אין פגישות שמורות ל־
+            אין רשומות מקומיות ל־
             <span className="font-semibold text-neutral-800 dark:text-zinc-200">
               {format(selectedDate, "d בMMMM yyyy", { locale: he })}
             </span>
-            .
+            — ביומן הגוגל עשויים להופיע אירועים נוספים.
           </p>
         ) : (
           <ul className="flex max-h-[min(40vh,16rem)] flex-col gap-2 overflow-y-auto overscroll-y-contain sm:max-h-60">
@@ -283,16 +294,10 @@ export function BookingCalendar({
                       <span className="font-medium text-[#c2410c] dark:text-orange-300">
                         {m.startHour} – {m.endHour}
                       </span>
-                      <span className="text-neutral-400 dark:text-zinc-600">
-                        {" "}
-                        ·{" "}
-                      </span>
-                      <span>{PAYMENT_LABELS[m.payment]}</span>
                     </p>
                   </div>
                   <div className="shrink-0 text-start text-[0.65rem] leading-snug text-neutral-500 dark:text-zinc-500 sm:text-end sm:text-xs">
                     <p className="truncate sm:max-w-[10rem]">{m.phone}</p>
-                    <p className="truncate sm:max-w-[10rem]">{m.email}</p>
                   </div>
                 </div>
               </li>
@@ -335,7 +340,7 @@ export function BookingCalendar({
             if (selectedDate) onRequestDetails?.();
           }}
         >
-          המשך לפרטים ותשלום
+          המשך לבחירת שעות
         </Button>
       </CardFooter>
     </Card>

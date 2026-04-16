@@ -1,25 +1,15 @@
-export type PaymentId = "card" | "bit" | "cash";
-
-export type BookingTimePayment = {
+export type BookingTimeRange = {
   startHour: string;
   endHour: string;
-  payment: PaymentId;
 };
 
 export type BookingContact = {
   fullName: string;
-  email: string;
   phone: string;
 };
 
-export type BookingPayload = BookingTimePayment &
+export type BookingPayload = BookingTimeRange &
   BookingContact & {
     /** yyyy-MM-dd */
     dateIso: string;
   };
-
-export const PAYMENT_LABELS: Record<PaymentId, string> = {
-  card: "כרטיס אשראי",
-  bit: "ביט",
-  cash: "מזומן בצילום",
-};

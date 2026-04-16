@@ -1,5 +1,4 @@
 import type { BookingPayload } from "@/lib/booking-types";
-import { PAYMENT_LABELS } from "@/lib/booking-types";
 
 /** Parse yyyy-MM-dd + HH:mm in the user's local timezone. */
 export function parseDateAndTime(dateIso: string, timeHm: string): Date {
@@ -17,8 +16,7 @@ function formatGoogleCalendarRange(start: Date, end: Date): string {
 }
 
 /**
- * Opens Google Calendar “create event” with fields prefilled.
- * User still taps Save in Google — no server OAuth required.
+ * Opens Google Calendar “create event” with fields prefilled (optional UX).
  */
 export function buildGoogleCalendarTemplateUrl(booking: BookingPayload): string {
   const start = parseDateAndTime(booking.dateIso, booking.startHour);
@@ -28,8 +26,6 @@ export function buildGoogleCalendarTemplateUrl(booking: BookingPayload): string 
   const details = [
     `שם: ${booking.fullName}`,
     `טלפון: ${booking.phone}`,
-    `דוא״ל: ${booking.email}`,
-    `תשלום: ${PAYMENT_LABELS[booking.payment]}`,
     "",
     "נוצר דרך מערכת ההזמנות באתר.",
   ].join("\n");

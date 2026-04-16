@@ -1,76 +1,108 @@
 "use client";
 
-import { format, parseISO, startOfDay } from "date-fns";
+import {
+  addMonths,
+  endOfMonth,
+  format,
+  parseISO,
+  startOfDay,
+  startOfMonth,
+  subMonths,
+} from "date-fns";
 import * as React from "react";
 
 import { BookingCalendar } from "@/components/booking/booking-calendar";
 import { BookingContactModal } from "@/components/booking/booking-contact-modal";
 import { BookingDetailsModal } from "@/components/booking/booking-details-modal";
 import { BookingSummaryModal } from "@/components/booking/booking-summary-modal";
-import type { BookingContact, BookingPayload } from "@/lib/booking-types";
 import {
-  addStoredMeeting,
-  loadMeetings,
-  meetingsOnDate,
-  type StoredMeeting,
-} from "@/lib/meetings-storage";
+  fullyBlockedDateIsoList,
+  type BusyInterval,
+} from "@/lib/availability-math";
+import type { BookingContact, BookingPayload } from "@/lib/booking-types";
+import { loadMeetings, meetingsOnDate, type StoredMeeting } from "@/lib/meetings-storage";
 
-function parseBlocked(isoStrings: string[]): Date[] {
-  return isoStrings
-    .map((s) => {
-      try {
-        return parseISO(s);
-      } catch {
-        return null;
-      }
-    })
-    .filter((d): d is Date => d !== null && !Number.isNaN(d.getTime()));
+async function fetchAvailabilityRange(
+  fromIso: string,
+  toIso: string,
+): Promise<BusyInterval[]> {
+  const q = new URLSearchParams({ from: fromIso, to: toIso });
+  const res = await fetch(`/api/availability?${q.toString()}`, {
+    cache: "no-store",
+  });
+  const data = (await res.json()) as { busy?: BusyInterval[]; error?: string };
+  if (!res.ok) {
+    throw new Error(data.error || "שגיאה בטעינת הזמינות.");
+  }
+  return data.busy ?? [];
 }
 
-type BookBookingSectionProps = {
-  blockedDateStrings: string[];
-};
+export function BookBookingSection() {
+  const [busy, setBusy] = React.useState<BusyInterval[]>([]);
+  const [availabilityError, setAvailabilityError] = React.useState<
+    string | null
+  >(null);
 
-export function BookBookingSection({
-  blockedDateStrings,
-}: BookBookingSectionProps) {
-  const blockedDates = React.useMemo(
-    () => parseBlocked(blockedDateStrings),
-    [blockedDateStrings],
-  );
+  const loadAvailability = React.useCallback(async () => {
+    const from = format(startOfMonth(subMonths(new Date(), 1)), "yyyy-MM-dd");
+    const to = format(endOfMonth(addMonths(new Date(), 4)), "yyyy-MM-dd");
+    try {
+      const list = await fetchAvailabilityRange(from, to);
+      setBusy(list);
+      setAvailabilityError(null);
+    } catch (e) {
+      setBusy([]);
+      setAvailabilityError(
+        e instanceof Error ? e.message : "לא ניתן לטעון זמינות מגוגל.",
+      );
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadAvailability();
+  }, [loadAvailability]);
+
+  React.useEffect(() => {
+    const onFocus = () => {
+      void loadAvailability();
+    };
+    window.addEventListener("focus", onFocus);
+    const id = window.setInterval(() => {
+      void loadAvailability();
+    }, 120_000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(id);
+    };
+  }, [loadAvailability]);
+
+  const blockedDates = React.useMemo(() => {
+    if (busy.length === 0) return [];
+    const from = format(startOfMonth(subMonths(new Date(), 1)), "yyyy-MM-dd");
+    const to = format(endOfMonth(addMonths(new Date(), 4)), "yyyy-MM-dd");
+    const blockedIso = fullyBlockedDateIsoList(busy, from, to);
+    const today = startOfDay(new Date());
+    return blockedIso
+      .map((iso) => startOfDay(parseISO(`${iso}T12:00:00`)))
+      .filter((d) => d >= today);
+  }, [busy]);
 
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
-  const [meetingDates, setMeetingDates] = React.useState<Date[]>([]);
   const [meetingsSnapshot, setMeetingsSnapshot] = React.useState<
     StoredMeeting[]
   >([]);
 
-  const refreshMeetingDots = React.useCallback(() => {
-    const list = loadMeetings();
-    setMeetingsSnapshot(list);
-    const unique = new Set<string>();
-    for (const m of list) {
-      unique.add(m.dateIso);
-    }
-    setMeetingDates(
-      Array.from(unique).map((iso) =>
-        startOfDay(parseISO(`${iso}T12:00:00`)),
-      ),
-    );
-  }, []);
-
   React.useEffect(() => {
-    refreshMeetingDots();
-  }, [refreshMeetingDots]);
+    setMeetingsSnapshot(loadMeetings());
+  }, []);
 
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [contactOpen, setContactOpen] = React.useState(false);
   const [summaryOpen, setSummaryOpen] = React.useState(false);
 
-  const [timePayment, setTimePayment] = React.useState<{
+  const [timeRange, setTimeRange] = React.useState<{
     startHour: string;
     endHour: string;
-    payment: BookingPayload["payment"];
   } | null>(null);
 
   const [draftBooking, setDraftBooking] = React.useState<BookingPayload | null>(
@@ -93,16 +125,18 @@ export function BookBookingSection({
         onSelectDate={setSelectedDate}
         onRequestDetails={() => setDetailsOpen(true)}
         blockedDates={blockedDates}
-        meetingDates={meetingDates}
+        busyIntervals={busy}
         dayMeetings={dayMeetings}
+        availabilityError={availabilityError}
       />
 
       <BookingDetailsModal
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         selectedDate={selectedDate}
+        busyIntervals={busy}
         onStepComplete={(payload) => {
-          setTimePayment(payload);
+          setTimeRange(payload);
           setContactOpen(true);
         }}
       />
@@ -110,28 +144,49 @@ export function BookBookingSection({
       <BookingContactModal
         open={contactOpen}
         onOpenChange={setContactOpen}
-        onContinue={(contact: BookingContact) => {
-          if (!timePayment || !dateIso) return;
+        onContinue={async (contact: BookingContact) => {
+          if (!timeRange || !dateIso) {
+            throw new Error("חסרים נתוני תאריך או שעות.");
+          }
+          const res = await fetch("/api/book", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: contact.fullName,
+              phone: contact.phone,
+              date: dateIso,
+              startTime: timeRange.startHour,
+              endTime: timeRange.endHour,
+            }),
+          });
+          const data = (await res.json()) as { ok?: boolean; error?: string };
+          if (!res.ok) {
+            throw new Error(data.error || "ההזמנה לא נשמרה.");
+          }
           const booking: BookingPayload = {
-            ...timePayment,
+            ...timeRange,
             ...contact,
             dateIso,
           };
           setDraftBooking(booking);
           setContactOpen(false);
           setSummaryOpen(true);
+          await loadAvailability();
         }}
       />
 
       <BookingSummaryModal
         open={summaryOpen}
-        onOpenChange={setSummaryOpen}
+        onOpenChange={(open) => {
+          setSummaryOpen(open);
+          if (!open) {
+            setDraftBooking(null);
+            setTimeRange(null);
+            setSelectedDate(null);
+          }
+        }}
         booking={draftBooking}
         selectedDate={selectedDate}
-        onSaveMeeting={(booking) => {
-          addStoredMeeting(booking);
-          refreshMeetingDots();
-        }}
       />
     </>
   );

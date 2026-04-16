@@ -9,17 +9,14 @@ import { cn } from "@/lib/utils";
 const inputClassName = cn(
   "flex h-11 w-full rounded-2xl border border-input bg-background px-4 text-sm text-foreground",
   "ring-offset-background placeholder:text-muted-foreground",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 );
-
-function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
 
 export type BookingContactModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onContinue: (contact: BookingContact) => void;
+  /** May return a Promise; errors should reject with Error(message). */
+  onContinue: (contact: BookingContact) => void | Promise<void>;
 };
 
 export function BookingContactModal({
@@ -29,18 +26,18 @@ export function BookingContactModal({
 }: BookingContactModalProps) {
   const dialogRef = React.useRef<HTMLDialogElement>(null);
   const [fullName, setFullName] = React.useState("");
-  const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+  const [pending, setPending] = React.useState(false);
 
   React.useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
     if (open) {
       setFullName("");
-      setEmail("");
       setPhone("");
       setError(null);
+      setPending(false);
       if (!el.open) el.showModal();
     } else if (el.open) {
       el.close();
@@ -51,16 +48,11 @@ export function BookingContactModal({
     onOpenChange(false);
   };
 
-  const submit = () => {
+  const submit = async () => {
     const name = fullName.trim();
-    const mail = email.trim();
     const tel = phone.trim();
     if (!name) {
       setError("נא למלא שם מלא.");
-      return;
-    }
-    if (!mail || !isValidEmail(mail)) {
-      setError("נא למלא כתובת דוא״ל תקינה.");
       return;
     }
     if (!tel || tel.replace(/\D/g, "").length < 9) {
@@ -68,7 +60,14 @@ export function BookingContactModal({
       return;
     }
     setError(null);
-    onContinue({ fullName: name, email: mail, phone: tel });
+    setPending(true);
+    try {
+      await onContinue({ fullName: name, phone: tel });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "שגיאה בשמירת ההזמנה.");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -77,18 +76,18 @@ export function BookingContactModal({
       dir="rtl"
       className={cn(
         "fixed left-1/2 top-1/2 z-[60] w-[min(100%,26rem)] max-h-[min(90vh,40rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-border/80 bg-card p-6 text-foreground shadow-xl",
-        "[&::backdrop]:fixed [&::backdrop]:inset-0 [&::backdrop]:bg-foreground/20 [&::backdrop]:backdrop-blur-[2px]"
+        "[&::backdrop]:fixed [&::backdrop]:inset-0 [&::backdrop]:bg-foreground/20 [&::backdrop]:backdrop-blur-[2px]",
       )}
       onClose={handleDialogClose}
     >
       <div className="space-y-6">
         <header className="space-y-1 border-b border-border/50 pb-4">
-          <p className="text-sm font-medium text-primary">שלב 4 מתוך 4</p>
+          <p className="text-sm font-medium text-primary">שלב 3 מתוך 3</p>
           <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
             פרטי קשר
           </h2>
           <p className="text-sm text-muted-foreground">
-            נא למלא פרטים ליצירת קשר ואישור ההזמנה.
+            הפרטים יישמרו באירוע ביומן הגוגל של הסטודיו.
           </p>
         </header>
 
@@ -104,21 +103,6 @@ export function BookingContactModal({
               autoComplete="name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className={inputClassName}
-            />
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="booking-email" className="text-sm font-medium">
-              דוא״ל
-            </label>
-            <input
-              id="booking-email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               className={inputClassName}
             />
           </div>
@@ -148,9 +132,10 @@ export function BookingContactModal({
           <Button
             type="button"
             className="rounded-2xl"
+            disabled={pending}
             onClick={submit}
           >
-            המשך
+            {pending ? "שולח…" : "אישור והזמנה"}
           </Button>
           <form method="dialog">
             <Button type="submit" variant="outline" className="rounded-2xl">

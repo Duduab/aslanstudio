@@ -7,18 +7,26 @@ export type StoredMeeting = BookingPayload & {
   createdAt: string;
 };
 
+function isStoredMeeting(x: unknown): x is StoredMeeting {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  return (
+    typeof o.id === "string" &&
+    typeof o.createdAt === "string" &&
+    typeof o.dateIso === "string" &&
+    typeof o.fullName === "string" &&
+    typeof o.phone === "string" &&
+    typeof o.startHour === "string" &&
+    typeof o.endHour === "string"
+  );
+}
+
 function safeParse(raw: string | null): StoredMeeting[] {
   if (!raw) return [];
   try {
     const data = JSON.parse(raw) as unknown;
     if (!Array.isArray(data)) return [];
-    return data.filter(
-      (x): x is StoredMeeting =>
-        x &&
-        typeof x === "object" &&
-        typeof (x as StoredMeeting).id === "string" &&
-        typeof (x as StoredMeeting).dateIso === "string"
-    );
+    return data.filter(isStoredMeeting);
   } catch {
     return [];
   }
@@ -51,7 +59,7 @@ export function addStoredMeeting(payload: BookingPayload): StoredMeeting {
 
 export function meetingsOnDate(
   meetings: StoredMeeting[],
-  dateIso: string
+  dateIso: string,
 ): StoredMeeting[] {
   return meetings
     .filter((m) => m.dateIso === dateIso)
