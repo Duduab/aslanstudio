@@ -21,12 +21,16 @@ import {
 } from "@/lib/availability-math";
 import type { BookingContact, BookingPayload } from "@/lib/booking-types";
 import { loadMeetings, meetingsOnDate, type StoredMeeting } from "@/lib/meetings-storage";
+import type { StudioCalendarDayEvent } from "@/lib/studio-calendar-day-event";
 
 async function fetchAvailabilityRange(
-  fromIso: string,
-  toIso: string,
+  fromDate: Date,
+  toDate: Date,
 ): Promise<BusyInterval[]> {
-  const q = new URLSearchParams({ from: fromIso, to: toIso });
+  const q = new URLSearchParams({
+    from: fromDate.toISOString(),
+    to: toDate.toISOString(),
+  });
   const res = await fetch(`/api/availability?${q.toString()}`, {
     cache: "no-store",
   });
@@ -44,8 +48,8 @@ export function BookBookingSection() {
   >(null);
 
   const loadAvailability = React.useCallback(async () => {
-    const from = format(startOfMonth(subMonths(new Date(), 1)), "yyyy-MM-dd");
-    const to = format(endOfMonth(addMonths(new Date(), 4)), "yyyy-MM-dd");
+    const from = startOfMonth(subMonths(new Date(), 1));
+    const to = endOfMonth(addMonths(new Date(), 4));
     try {
       const list = await fetchAvailabilityRange(from, to);
       setBusy(list);
@@ -92,9 +96,78 @@ export function BookBookingSection() {
     StoredMeeting[]
   >([]);
 
+  const [studioDayEvents, setStudioDayEvents] = React.useState<
+    StudioCalendarDayEvent[]
+  >([]);
+  const [studioDayEventsLoading, setStudioDayEventsLoading] =
+    React.useState(false);
+  const [studioDayEventsError, setStudioDayEventsError] = React.useState<
+    string | null
+  >(null);
+
+  const dateIso = selectedDate
+    ? format(selectedDate, "yyyy-MM-dd")
+    : null;
+
+  const dayMeetings = React.useMemo(() => {
+    if (!dateIso) return [];
+    return meetingsOnDate(meetingsSnapshot, dateIso);
+  }, [dateIso, meetingsSnapshot]);
+
+  const loadStudioDayEvents = React.useCallback(
+    async (iso: string, signal?: AbortSignal) => {
+      setStudioDayEvents([]);
+      setStudioDayEventsLoading(true);
+      setStudioDayEventsError(null);
+      try {
+        const res = await fetch(
+          `/api/calendar-day-events?date=${encodeURIComponent(iso)}`,
+          { cache: "no-store", signal },
+        );
+        const data = (await res.json()) as {
+          events?: StudioCalendarDayEvent[];
+          error?: string;
+        };
+        if (signal?.aborted) return;
+        if (!res.ok) {
+          throw new Error(data.error || "לא ניתן לטעון אירועים ליום זה.");
+        }
+        setStudioDayEvents(data.events ?? []);
+      } catch (e) {
+        if (
+          signal?.aborted ||
+          (e instanceof DOMException && e.name === "AbortError")
+        ) {
+          return;
+        }
+        setStudioDayEvents([]);
+        setStudioDayEventsError(
+          e instanceof Error ? e.message : "לא ניתן לטעון אירועים ליום זה.",
+        );
+      } finally {
+        if (!signal?.aborted) {
+          setStudioDayEventsLoading(false);
+        }
+      }
+    },
+    [],
+  );
+
   React.useEffect(() => {
     setMeetingsSnapshot(loadMeetings());
   }, []);
+
+  React.useEffect(() => {
+    if (!dateIso) {
+      setStudioDayEvents([]);
+      setStudioDayEventsError(null);
+      setStudioDayEventsLoading(false);
+      return;
+    }
+    const ac = new AbortController();
+    void loadStudioDayEvents(dateIso, ac.signal);
+    return () => ac.abort();
+  }, [dateIso, loadStudioDayEvents]);
 
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [contactOpen, setContactOpen] = React.useState(false);
@@ -109,15 +182,6 @@ export function BookBookingSection() {
     null,
   );
 
-  const dateIso = selectedDate
-    ? format(selectedDate, "yyyy-MM-dd")
-    : null;
-
-  const dayMeetings = React.useMemo(() => {
-    if (!dateIso) return [];
-    return meetingsOnDate(meetingsSnapshot, dateIso);
-  }, [dateIso, meetingsSnapshot]);
-
   return (
     <>
       <BookingCalendar
@@ -127,6 +191,9 @@ export function BookBookingSection() {
         blockedDates={blockedDates}
         busyIntervals={busy}
         dayMeetings={dayMeetings}
+        studioDayEvents={studioDayEvents}
+        studioDayEventsLoading={studioDayEventsLoading}
+        studioDayEventsError={studioDayEventsError}
         availabilityError={availabilityError}
       />
 
@@ -155,8 +222,7 @@ export function BookBookingSection() {
               name: contact.fullName,
               phone: contact.phone,
               date: dateIso,
-              startTime: timeRange.startHour,
-              endTime: timeRange.endHour,
+              timeSlot: `${timeRange.startHour}-${timeRange.endHour}`,
             }),
           });
           const data = (await res.json()) as { ok?: boolean; error?: string };
@@ -172,6 +238,7 @@ export function BookBookingSection() {
           setContactOpen(false);
           setSummaryOpen(true);
           await loadAvailability();
+          await loadStudioDayEvents(dateIso);
         }}
       />
 

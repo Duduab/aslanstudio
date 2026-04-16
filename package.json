@@ -3,11 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:clean": "rm -rf .next && next dev",
+    "dev": "next dev --turbo",
+    "dev:webpack": "next dev",
+    "dev:clean": "rm -rf .next node_modules/.cache && next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "google:refresh-token": "node scripts/get-google-refresh-token.mjs",
+    "google:refresh-token~": "node scripts/get-google-refresh-token.mjs"
   },
   "dependencies": {
     "@radix-ui/react-direction": "^1.1.1",

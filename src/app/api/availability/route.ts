@@ -1,6 +1,7 @@
 import { addMonths, endOfMonth, startOfMonth } from "date-fns";
 import { NextResponse } from "next/server";
 
+import { resolveGoogleCalendarRouteError } from "@/lib/google-calendar-route-errors";
 import { fetchFreeBusy } from "@/lib/google-calendar-server";
 
 export const dynamic = "force-dynamic";
@@ -25,10 +26,11 @@ export async function GET(request: Request) {
       timeMax = new Date(timeMin.getTime() + 86400000);
     }
 
-    const maxSpanMs = 120 * 86400000;
+    // Wide ranges are OK: fetchFreeBusy chunks requests for Google’s limits.
+    const maxSpanMs = 548 * 86400000;
     if (timeMax.getTime() - timeMin.getTime() > maxSpanMs) {
       return NextResponse.json(
-        { error: "Range too large (max 120 days)." },
+        { error: "טווח התאריכים גדול מדי (מקסימום כ־18 חודשים)." },
         { status: 400 },
       );
     }
@@ -47,16 +49,12 @@ export async function GET(request: Request) {
       },
     );
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unknown error";
-    const isConfig = message.includes("Missing required environment");
-    return NextResponse.json(
-      {
-        error: isConfig
-          ? "Calendar integration is not configured on the server."
-          : "Google Calendar is temporarily unavailable.",
-        details: process.env.NODE_ENV === "development" ? message : undefined,
-      },
-      { status: isConfig ? 503 : 502 },
-    );
+    const { status, error, details } = resolveGoogleCalendarRouteError(e, {
+      vercelEnvHint:
+        "בדקו משתני סביבה ב־Vercel (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN).",
+      localEnvHint:
+        "הוסיפו משתנים אלה לקובץ .env.local (שם מדויק; לא .env.local.) ואז הריצו מחדש את שרת הפיתוח.",
+    });
+    return NextResponse.json({ error, details }, { status });
   }
 }

@@ -33,6 +33,7 @@ import {
   type BusyInterval,
 } from "@/lib/availability-math";
 import type { StoredMeeting } from "@/lib/meetings-storage";
+import type { StudioCalendarDayEvent } from "@/lib/studio-calendar-day-event";
 import { cn } from "@/lib/utils";
 
 const WEEKDAY_LABELS_HE = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"] as const;
@@ -46,6 +47,10 @@ type BookingCalendarProps = {
   busyIntervals?: BusyInterval[];
   /** Optional legacy rows from localStorage (display only). */
   dayMeetings?: StoredMeeting[];
+  /** Google Calendar events for the selected day (`/api/calendar-day-events`). */
+  studioDayEvents?: StudioCalendarDayEvent[];
+  studioDayEventsLoading?: boolean;
+  studioDayEventsError?: string | null;
   /** Shown under the month title when /api/availability fails. */
   availabilityError?: string | null;
 };
@@ -57,6 +62,9 @@ export function BookingCalendar({
   blockedDates = [],
   busyIntervals = [],
   dayMeetings = [],
+  studioDayEvents = [],
+  studioDayEventsLoading = false,
+  studioDayEventsError = null,
   availabilityError = null,
 }: BookingCalendarProps) {
   const [currentMonth, setCurrentMonth] = React.useState<Date>(() =>
@@ -247,7 +255,7 @@ export function BookingCalendar({
           id="calendar-day-meetings-heading"
           className="mb-3 text-center text-xs font-bold uppercase tracking-[0.14em] text-[#ea580c] dark:text-[#fb923c] sm:text-start sm:text-sm sm:tracking-[0.12em]"
         >
-          פגישות ביום הנבחר
+          אירועים ביום הנבחר
         </h3>
 
         {!selectedDate ? (
@@ -258,9 +266,9 @@ export function BookingCalendar({
               "dark:border-orange-500/20 dark:from-orange-500/15 dark:to-zinc-900/50 dark:text-zinc-400",
             )}
           >
-            לחצו על יום בלוח. רשימת אירועים מפורטת נמצאת ביומן Google של הסטודיו.
+            לחצו על יום בלוח כדי לראות את כל האירועים המתוזמנים ביומן Google של הסטודיו.
           </p>
-        ) : dayMeetings.length === 0 ? (
+        ) : studioDayEventsLoading ? (
           <p
             className={cn(
               "rounded-2xl border px-3 py-3 text-center text-xs sm:px-4 sm:text-sm",
@@ -268,41 +276,88 @@ export function BookingCalendar({
               "dark:border-white/10 dark:bg-zinc-900/55 dark:text-zinc-400",
             )}
           >
-            אין רשומות מקומיות ל־
+            טוען אירועים מהיומן…
+          </p>
+        ) : studioDayEventsError ? (
+          <p className="rounded-2xl border border-destructive/30 bg-destructive/5 px-3 py-3 text-center text-xs text-destructive sm:px-4 sm:text-sm">
+            {studioDayEventsError}
+          </p>
+        ) : studioDayEvents.length === 0 && dayMeetings.length === 0 ? (
+          <p
+            className={cn(
+              "rounded-2xl border px-3 py-3 text-center text-xs sm:px-4 sm:text-sm",
+              "border-white/50 bg-white/35 text-neutral-600",
+              "dark:border-white/10 dark:bg-zinc-900/55 dark:text-zinc-400",
+            )}
+          >
+            אין אירועים מתוזמנים ל־
             <span className="font-semibold text-neutral-800 dark:text-zinc-200">
               {format(selectedDate, "d בMMMM yyyy", { locale: he })}
             </span>
-            — ביומן הגוגל עשויים להופיע אירועים נוספים.
+            .
           </p>
         ) : (
-          <ul className="flex max-h-[min(40vh,16rem)] flex-col gap-2 overflow-y-auto overscroll-y-contain sm:max-h-60">
-            {dayMeetings.map((m) => (
-              <li
-                key={m.id}
-                className={cn(
-                  "rounded-2xl border p-3 backdrop-blur-sm sm:p-3.5",
-                  "border-orange-200/45 bg-gradient-to-l from-orange-500/12 via-white/35 to-white/20 shadow-[0_8px_24px_-12px_rgba(234,88,12,0.25)]",
-                  "dark:border-orange-500/25 dark:from-orange-500/18 dark:via-zinc-800/55 dark:to-zinc-900/45 dark:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.55)]",
-                )}
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-                  <div className="min-w-0 space-y-1 text-start">
-                    <p className="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-50">
-                      {m.fullName}
-                    </p>
-                    <p className="text-xs text-neutral-600 dark:text-zinc-400 sm:text-sm">
-                      <span className="font-medium text-[#c2410c] dark:text-orange-300">
-                        {m.startHour} – {m.endHour}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-start text-[0.65rem] leading-snug text-neutral-500 dark:text-zinc-500 sm:text-end sm:text-xs">
-                    <p className="truncate sm:max-w-[10rem]">{m.phone}</p>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="flex max-h-[min(48vh,20rem)] flex-col gap-4 overflow-y-auto overscroll-y-contain sm:max-h-72">
+            {studioDayEvents.length > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {studioDayEvents.map((ev) => (
+                  <li
+                    key={ev.id}
+                    className={cn(
+                      "rounded-2xl border p-3 backdrop-blur-sm sm:p-3.5",
+                      "border-orange-200/45 bg-gradient-to-l from-orange-500/12 via-white/35 to-white/20 shadow-[0_8px_24px_-12px_rgba(234,88,12,0.25)]",
+                      "dark:border-orange-500/25 dark:from-orange-500/18 dark:via-zinc-800/55 dark:to-zinc-900/45 dark:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.55)]",
+                    )}
+                  >
+                    <div className="min-w-0 space-y-1 text-start">
+                      <p className="text-xs font-medium text-[#c2410c] dark:text-orange-300 sm:text-sm">
+                        {ev.timeLabel || "—"}
+                      </p>
+                      <p className="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-50">
+                        {ev.summary}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            {dayMeetings.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-center text-[0.65rem] font-bold uppercase tracking-[0.12em] text-neutral-500 dark:text-zinc-500 sm:text-start sm:text-xs">
+                  הזמנות דרך האתר
+                </p>
+                <ul className="flex flex-col gap-2">
+                  {dayMeetings.map((m) => (
+                    <li
+                      key={m.id}
+                      className={cn(
+                        "rounded-2xl border p-3 backdrop-blur-sm sm:p-3.5",
+                        "border-orange-200/45 bg-gradient-to-l from-orange-500/12 via-white/35 to-white/20 shadow-[0_8px_24px_-12px_rgba(234,88,12,0.25)]",
+                        "dark:border-orange-500/25 dark:from-orange-500/18 dark:via-zinc-800/55 dark:to-zinc-900/45 dark:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.55)]",
+                      )}
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                        <div className="min-w-0 space-y-1 text-start">
+                          <p className="truncate text-sm font-semibold text-neutral-900 dark:text-zinc-50">
+                            {m.fullName}
+                          </p>
+                          <p className="text-xs text-neutral-600 dark:text-zinc-400 sm:text-sm">
+                            <span className="font-medium text-[#c2410c] dark:text-orange-300">
+                              {m.startHour} – {m.endHour}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-start text-[0.65rem] leading-snug text-neutral-500 dark:text-zinc-500 sm:text-end sm:text-xs">
+                          <p className="truncate sm:max-w-[10rem]">{m.phone}</p>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
         )}
       </section>
 

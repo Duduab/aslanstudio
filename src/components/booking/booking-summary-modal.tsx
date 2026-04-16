@@ -53,14 +53,20 @@ export function BookingSummaryModal({
       onClose={handleDialogClose}
     >
       <div className="space-y-6">
-        <header className="space-y-2 border-b border-border/50 pb-4">
-          <p className="text-sm font-medium text-primary">ההזמנה נקלטה</p>
-          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-            נרשם ביומן הסטודיו
+        <header className="space-y-3 border-b border-border/50 pb-4">
+          <p className="text-center text-4xl" aria-hidden>
+            ✓
+          </p>
+          <p className="text-center text-sm font-semibold text-primary">
+            הכל מוכן
+          </p>
+          <h2 className="text-center text-xl font-semibold tracking-tight sm:text-2xl">
+            תודה רבה — ההזמנה נקלטה בהצלחה
           </h2>
-          <p className="text-sm text-muted-foreground">
-            האירוע נוצר ביומן Google של הסטודיו (מקור האמת לזמינות). אם לא
-            קיבלתם אישור, בדקו את חיבור השרת לגוגל.
+          <p className="text-pretty text-center text-sm leading-relaxed text-muted-foreground">
+            הקביעה נכנסה ליומן Google של הסטודיו (זהו מקור האמת לזמינות). נתראה
+            בתאריך ובשעה שבחרתם. אם צריך לשנות או לבטל, צרו קשר עם הסטודיו
+            בטלפון שמסרתם.
           </p>
         </header>
 
@@ -89,10 +95,10 @@ export function BookingSummaryModal({
           <p className="text-sm text-muted-foreground">אין נתוני הזמנה להצגה.</p>
         )}
 
-        <footer className="flex w-full flex-wrap items-center justify-end gap-2 border-t border-border/50 pt-4">
+        <footer className="flex w-full flex-wrap items-center justify-center border-t border-border/50 pt-4">
           <form method="dialog">
-            <Button type="submit" className="rounded-2xl">
-              סגור
+            <Button type="submit" size="lg" className="rounded-2xl px-8">
+              סגירה
             </Button>
           </form>
         </footer>

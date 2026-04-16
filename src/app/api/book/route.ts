@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { jerusalemInstant } from "@/lib/availability-math";
+import { resolveGoogleCalendarRouteError } from "@/lib/google-calendar-route-errors";
 import { fetchFreeBusy, insertStudioBooking } from "@/lib/google-calendar-server";
+import { parseTimeSlot } from "@/lib/time-slot";
 import { STUDIO_CLOSE_HOUR, STUDIO_OPEN_HOUR } from "@/lib/studio-calendar-config";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +14,8 @@ type BookBody = {
   name?: unknown;
   phone?: unknown;
   date?: unknown;
+  /** Preferred: "HH:mm-HH:mm" (also accepts – or —). */
+  timeSlot?: unknown;
   startTime?: unknown;
   endTime?: unknown;
 };
@@ -24,50 +28,76 @@ function overlaps(a0: Date, a1: Date, b0: Date, b1: Date): boolean {
   return a0 < b1 && a1 > b0;
 }
 
+function resolveTimes(body: BookBody): { startTime: string; endTime: string } | null {
+  if (typeof body.timeSlot === "string" && body.timeSlot.trim()) {
+    return parseTimeSlot(body.timeSlot);
+  }
+  const st =
+    typeof body.startTime === "string" ? body.startTime.trim() : "";
+  const et = typeof body.endTime === "string" ? body.endTime.trim() : "";
+  if (TIME_RE.test(st) && TIME_RE.test(et)) return { startTime: st, endTime: et };
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
     let body: BookBody;
     try {
       body = (await request.json()) as BookBody;
     } catch {
-      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+      return NextResponse.json(
+        { error: "גוף הבקשה אינו JSON תקין." },
+        { status: 400 },
+      );
     }
 
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const phone = typeof body.phone === "string" ? body.phone.trim() : "";
     const dateIso = typeof body.date === "string" ? body.date.trim() : "";
-    const startTime =
-      typeof body.startTime === "string" ? body.startTime.trim() : "";
-    const endTime = typeof body.endTime === "string" ? body.endTime.trim() : "";
+    const times = resolveTimes(body);
 
     if (!name || name.length > 200) {
-      return NextResponse.json({ error: "Invalid name." }, { status: 400 });
+      return NextResponse.json({ error: "שם לא תקין." }, { status: 400 });
     }
     if (!phone || phone.replace(/\D/g, "").length < 9) {
-      return NextResponse.json({ error: "Invalid phone." }, { status: 400 });
+      return NextResponse.json({ error: "מספר טלפון לא תקין." }, { status: 400 });
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
-      return NextResponse.json({ error: "Invalid date (use YYYY-MM-DD)." }, {
-        status: 400,
-      });
-    }
-    if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime)) {
       return NextResponse.json(
-        { error: "Invalid startTime or endTime (use HH:mm)." },
+        { error: "תאריך לא תקין (יש להשתמש ב־YYYY-MM-DD)." },
+        { status: 400 },
+      );
+    }
+    if (!times) {
+      return NextResponse.json(
+        {
+          error:
+            "חסר מקטע זמן תקין. נא לשלוח timeSlot בפורמט HH:mm-HH:mm (למשל 09:00-12:00).",
+        },
         { status: 400 },
       );
     }
 
+    const { startTime, endTime } = times;
     const sh = hourFromLabel(startTime);
     const eh = hourFromLabel(endTime);
     if (sh < STUDIO_OPEN_HOUR || eh > STUDIO_CLOSE_HOUR || eh <= sh) {
-      return NextResponse.json({ error: "Invalid studio hours." }, {
-        status: 400,
-      });
+      return NextResponse.json(
+        { error: "שעות מחוץ לחלון ההשכרה (09:00–21:00)." },
+        { status: 400 },
+      );
     }
 
-    const winStart = jerusalemInstant(dateIso, sh, Number(startTime.slice(3, 5)) || 0);
-    const winEnd = jerusalemInstant(dateIso, eh, Number(endTime.slice(3, 5)) || 0);
+    const winStart = jerusalemInstant(
+      dateIso,
+      sh,
+      Number(startTime.slice(3, 5)) || 0,
+    );
+    const winEnd = jerusalemInstant(
+      dateIso,
+      eh,
+      Number(endTime.slice(3, 5)) || 0,
+    );
 
     const busy = await fetchFreeBusy({
       timeMin: new Date(winStart.getTime() - 3600000),
@@ -79,7 +109,7 @@ export async function POST(request: Request) {
       const b1 = new Date(b.end);
       if (overlaps(winStart, winEnd, b0, b1)) {
         return NextResponse.json(
-          { error: "That time slot is no longer available." },
+          { error: "המשבצת כבר תפוסה ביומן. בחרו זמן אחר." },
           { status: 409 },
         );
       }
@@ -93,18 +123,25 @@ export async function POST(request: Request) {
       endTime,
     });
 
-    return NextResponse.json({ ok: true, eventId: id ?? null });
+    return NextResponse.json({
+      ok: true,
+      eventId: id ?? null,
+      message: "ההזמנה נרשמה ביומן הסטודיו בהצלחה.",
+    });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unknown error";
-    const isConfig = message.includes("Missing required environment");
-    return NextResponse.json(
-      {
-        error: isConfig
-          ? "Calendar integration is not configured on the server."
-          : "Could not create the calendar event.",
-        details: process.env.NODE_ENV === "development" ? message : undefined,
-      },
-      { status: isConfig ? 503 : 502 },
-    );
+    const { status, error, details } = resolveGoogleCalendarRouteError(e, {
+      vercelEnvHint:
+        "בדקו משתני סביבה ב־Vercel (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN).",
+      localEnvHint:
+        "הוסיפו משתנים אלה לקובץ .env.local (שם מדויק; לא .env.local.) ואז הריצו מחדש את שרת הפיתוח.",
+    });
+    const body =
+      status === 502
+        ? {
+            error: "לא ניתן ליצור את האירוע ביומן כרגע. נסו שוב בעוד רגע.",
+            details,
+          }
+        : { error, details };
+    return NextResponse.json(body, { status });
   }
 }
