@@ -10,7 +10,8 @@
 @layer base {
   :root {
     --font-sans: "Heebo", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --font-serif: "Frank Ruhl Libre", Georgia, "Times New Roman", serif;
+    /* Kept for compatibility; same as sans so all `font-serif` uses Heebo like body copy. */
+    --font-serif: "Heebo", system-ui, -apple-system, "Segoe UI", sans-serif;
     --background: #f6f6f2;
     --foreground: #191826;
     --card: #ffffff;
@@ -108,7 +109,16 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased font-sans;
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-sans);
   }
 }

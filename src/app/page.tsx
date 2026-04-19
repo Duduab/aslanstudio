@@ -1,9 +1,5 @@
-import { HeroCarousel } from "@/components/marketing/hero-carousel";
+import { HomeLanding } from "@/components/marketing/home-landing";
 
 export default function Home() {
-  return (
-    <main className="min-h-dvh bg-neutral-950">
-      <HeroCarousel />
-    </main>
-  );
+  return <HomeLanding />;
 }

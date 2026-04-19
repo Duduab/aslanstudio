@@ -30,7 +30,7 @@ export default function RootLayout({
         />
         {/* eslint-disable-next-line @next/next/no-page-custom-font -- App Router; avoids build-time Google fetch from next/font */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;500;600;700&family=Heebo:wght@300;400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>

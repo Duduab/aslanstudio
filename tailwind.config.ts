@@ -10,8 +10,9 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
+        // Single stack site-wide (Heebo) — matches body / UI copy; `font-serif` aliases the same.
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        serif: ["var(--font-serif)", "Georgia", "Times New Roman", "serif"],
+        serif: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
       colors: {
         border: "var(--border)",

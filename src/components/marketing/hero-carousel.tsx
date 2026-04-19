@@ -5,7 +5,6 @@ import Link from "next/link";
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { RtlIcon } from "@/components/ui/rtl-icon";
 import { cn } from "@/lib/utils";
@@ -50,7 +49,7 @@ export function HeroCarousel() {
     <section
       aria-roledescription="carousel"
       aria-label="תמונות הסטודיו"
-      className="relative isolate h-[min(88vh,860px)] w-full overflow-hidden bg-neutral-950"
+      className="relative isolate min-h-[min(92dvh,900px)] w-full overflow-hidden bg-neutral-950 sm:min-h-[min(88vh,860px)]"
     >
       {SLIDES.map((slide, i) => (
         <div
@@ -79,33 +78,35 @@ export function HeroCarousel() {
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-48 bg-gradient-to-t from-black/70 to-transparent" />
 
-      <div className="relative z-10 flex h-full flex-col">
-        <div className="pointer-events-auto absolute start-4 top-4 z-30 sm:start-6 sm:top-6">
-          <ThemeToggle variant="overlay" />
-        </div>
-
-        <div className="flex flex-1 flex-col items-center justify-center px-5 pb-28 pt-20 text-center sm:px-8 sm:pb-32 sm:pt-24">
-          <div className="max-w-3xl space-y-5 sm:space-y-7">
-            <p className="font-sans text-xs font-medium uppercase tracking-[0.35em] text-white/75 sm:text-sm">
-              Aslan Studio · השכרת סטודיו
+      <div className="relative z-10 flex min-h-[inherit] flex-col">
+        <div className="flex flex-1 flex-col items-center justify-center px-5 pb-28 pt-16 text-center sm:px-8 sm:pb-32 sm:pt-20 md:pt-24">
+          <div className="max-w-3xl space-y-4 sm:space-y-6 md:space-y-7">
+            <p className="font-sans text-[0.65rem] font-semibold uppercase tracking-[0.38em] text-white/70 sm:text-xs md:text-sm">
+              PHOTOGRAPHY · STUDIO
             </p>
-            <h1 className="font-serif text-balance text-4xl font-medium leading-[1.15] tracking-tight text-white drop-shadow-sm sm:text-5xl md:text-6xl md:leading-[1.1]">
-              סטודיו לשימוש מקצועי
+            <h1 className="text-balance text-3xl font-semibold leading-[1.12] tracking-tight text-white drop-shadow-md sm:text-4xl md:text-5xl lg:text-[2.75rem] lg:leading-[1.1]">
+              הסטודיו של אסלן — המרחב שלכם ליצירה בבאר שבע
             </h1>
-            <p className="mx-auto max-w-2xl font-sans text-pretty text-base leading-relaxed text-white/88 sm:text-lg md:text-xl">
-              אור יום טבעי, חלל מינימלי ושקט — בחרו תאריך ומשבצת, השאירו פרטים
-              והשלימו את ההזמנה בכמה צעדים ברורים. חוויית הזמנה נקייה, מותאמת
-              לעברית ול־RTL.
+            <p className="mx-auto max-w-2xl text-pretty text-sm font-medium leading-relaxed text-white/90 sm:text-base md:text-lg">
+              חלל מעוצב, מאובזר וחכם להשכרה – לצילומים, סדנאות ומפגשים
             </p>
           </div>
 
-          <div className="mt-10 sm:mt-12">
+          <div className="mt-9 flex flex-col items-center gap-3 sm:mt-11 sm:flex-row sm:gap-4 md:mt-12">
             <Button
               asChild
               size="lg"
-              className="pointer-events-auto rounded-full border-0 bg-primary px-12 py-7 text-base font-semibold text-primary-foreground shadow-lg shadow-black/30 transition hover:bg-primary/90 sm:text-lg"
+              className="pointer-events-auto rounded-full border-0 bg-gradient-to-l from-[#fb923c] to-[#ea580c] px-10 py-7 text-base font-semibold text-white shadow-lg shadow-black/35 transition hover:from-[#fdba74] hover:to-[#f97316] sm:px-12 sm:text-lg"
             >
-              <Link href="/book">הזמן מקום</Link>
+              <Link href="/book">הזמנת סטודיו</Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="pointer-events-auto rounded-full border-white/35 bg-white/10 px-8 py-6 text-base font-medium text-white backdrop-blur-md hover:bg-white/20"
+            >
+              <Link href="/book#booking">ללוח הזמינות</Link>
             </Button>
           </div>
         </div>
