@@ -121,6 +121,14 @@
   h6 {
     font-family: var(--font-sans);
   }
+
+  /*
+   * Closed <dialog> relies on the UA hiding it with display:none. Tailwind utilities
+   * such as `flex` on the same element override that, so dialogs looked "always open".
+   */
+  dialog:not([open]) {
+    display: none !important;
+  }
 }
 
 @layer utilities {

@@ -5,8 +5,8 @@ import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { heLocale } from "@/lib/date-he";
+import { bookingDialogClassName } from "@/lib/booking-dialog-classes";
 import type { BookingPayload } from "@/lib/booking-types";
-import { cn } from "@/lib/utils";
 
 export type BookingSummaryModalProps = {
   open: boolean;
@@ -46,10 +46,11 @@ export function BookingSummaryModal({
     <dialog
       ref={dialogRef}
       dir="rtl"
-      className={cn(
-        "fixed left-1/2 top-1/2 z-[70] w-[min(100%,28rem)] max-h-[min(90vh,44rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-border/80 bg-card p-6 text-foreground shadow-xl",
-        "[&::backdrop]:fixed [&::backdrop]:inset-0 [&::backdrop]:bg-foreground/20 [&::backdrop]:backdrop-blur-[2px]",
-      )}
+      className={bookingDialogClassName({
+        z: "z-[70]",
+        maxW: "max-w-[28rem]",
+        maxH: "max-h-[min(92dvh,44rem)]",
+      })}
       onClose={handleDialogClose}
     >
       <div className="space-y-6">

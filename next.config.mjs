@@ -1,17 +1,8 @@
 /** @type {import('next').NextConfig} */
 
-// `next dev --turbo` uses Turbopack; custom webpack settings are ignored and only produce noise.
-const useTurboDev = process.argv.includes("--turbo");
+// Do not set `webpack.cache = false` in dev: it breaks Next's mapping of
+// `/_next/static/css/app/layout.css` to the built CSS (browser gets HTML → no styles).
 
-const nextConfig = {
-  webpack: (config, { dev }) => {
-    if (useTurboDev) return config;
-    // Webpack dev only: reduce stale chunk manifests after HMR (missing ./NNN.js, broken CSS).
-    if (dev) {
-      config.cache = false;
-    }
-    return config;
-  },
-};
+const nextConfig = {};
 
 export default nextConfig;

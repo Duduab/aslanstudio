@@ -9,6 +9,7 @@ import {
   disabledStartHours,
   type BusyInterval,
 } from "@/lib/availability-math";
+import { bookingDialogClassName } from "@/lib/booking-dialog-classes";
 import { heLocale } from "@/lib/date-he";
 import { cn } from "@/lib/utils";
 
@@ -106,10 +107,7 @@ export function BookingDetailsModal({
     <dialog
       ref={dialogRef}
       dir="rtl"
-      className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-[min(100%,26rem)] max-h-[min(90vh,40rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-border/80 bg-card p-6 text-foreground shadow-xl",
-        "[&::backdrop]:fixed [&::backdrop]:inset-0 [&::backdrop]:bg-foreground/20 [&::backdrop]:backdrop-blur-[2px]",
-      )}
+      className={bookingDialogClassName()}
       onClose={handleDialogClose}
     >
       <div className="space-y-6">

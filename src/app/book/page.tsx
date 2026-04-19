@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { BookBookingSection } from "@/components/booking/book-booking-section";
-import { BookCalendarStage } from "@/components/booking/book-calendar-stage";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export const metadata: Metadata = {
@@ -47,9 +46,7 @@ export default function BookPage() {
             </p>
           </header>
 
-          <BookCalendarStage>
-            <BookBookingSection />
-          </BookCalendarStage>
+          <BookBookingSection />
         </div>
       </section>
     </main>

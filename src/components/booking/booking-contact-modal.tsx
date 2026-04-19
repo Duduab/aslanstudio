@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
+import { bookingDialogClassName } from "@/lib/booking-dialog-classes";
 import type { BookingContact } from "@/lib/booking-types";
 import { cn } from "@/lib/utils";
 
@@ -74,10 +75,7 @@ export function BookingContactModal({
     <dialog
       ref={dialogRef}
       dir="rtl"
-      className={cn(
-        "fixed left-1/2 top-1/2 z-[60] w-[min(100%,26rem)] max-h-[min(90vh,40rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-border/80 bg-card p-6 text-foreground shadow-xl",
-        "[&::backdrop]:fixed [&::backdrop]:inset-0 [&::backdrop]:bg-foreground/20 [&::backdrop]:backdrop-blur-[2px]",
-      )}
+      className={bookingDialogClassName({ z: "z-[60]" })}
       onClose={handleDialogClose}
     >
       <div className="space-y-6">

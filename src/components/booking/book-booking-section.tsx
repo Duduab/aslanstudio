@@ -12,6 +12,7 @@ import {
 import * as React from "react";
 
 import { BookingCalendar } from "@/components/booking/booking-calendar";
+import { BookCalendarStage } from "@/components/booking/book-calendar-stage";
 import { BookingContactModal } from "@/components/booking/booking-contact-modal";
 import { BookingDetailsModal } from "@/components/booking/booking-details-modal";
 import { BookingSummaryModal } from "@/components/booking/booking-summary-modal";
@@ -184,18 +185,20 @@ export function BookBookingSection() {
 
   return (
     <>
-      <BookingCalendar
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-        onRequestDetails={() => setDetailsOpen(true)}
-        blockedDates={blockedDates}
-        busyIntervals={busy}
-        dayMeetings={dayMeetings}
-        studioDayEvents={studioDayEvents}
-        studioDayEventsLoading={studioDayEventsLoading}
-        studioDayEventsError={studioDayEventsError}
-        availabilityError={availabilityError}
-      />
+      <BookCalendarStage>
+        <BookingCalendar
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          onRequestDetails={() => setDetailsOpen(true)}
+          blockedDates={blockedDates}
+          busyIntervals={busy}
+          dayMeetings={dayMeetings}
+          studioDayEvents={studioDayEvents}
+          studioDayEventsLoading={studioDayEventsLoading}
+          studioDayEventsError={studioDayEventsError}
+          availabilityError={availabilityError}
+        />
+      </BookCalendarStage>
 
       <BookingDetailsModal
         open={detailsOpen}
